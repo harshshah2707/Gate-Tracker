@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import NavigationShell from "@/components/NavigationShell";
+import Script from "next/script";
 
 export const viewport: Viewport = {
   themeColor: "#6366f1",
@@ -46,6 +47,9 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
+      </head>
       <body className="min-h-full flex flex-col bg-[#020617] text-slate-100">
         <NavigationShell>{children}</NavigationShell>
       </body>

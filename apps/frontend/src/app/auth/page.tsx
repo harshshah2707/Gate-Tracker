@@ -1,6 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+
+declare global {
+  interface Window {
+    google: any;
+  }
+}
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { Mail, Lock, User, Sparkles, LogIn, AlertCircle } from 'lucide-react';
@@ -13,6 +19,58 @@ export default function AuthPage() {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const initGoogleOAuth = () => {
+      if (typeof window !== 'undefined' && window.google) {
+        try {
+          window.google.accounts.id.initialize({
+            client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
+            callback: handleGoogleLoginCallback,
+          });
+          window.google.accounts.id.renderButton(
+            document.getElementById('google-signin-button'),
+            { 
+              theme: 'outline', 
+              size: 'large', 
+              text: 'continue_with', 
+              shape: 'rectangular',
+              width: '382' 
+            }
+          );
+        } catch (e) {
+          console.error('Google initialization error:', e);
+        }
+      } else {
+        setTimeout(initGoogleOAuth, 300);
+      }
+    };
+
+    initGoogleOAuth();
+  }, []);
+
+  const handleGoogleLoginCallback = async (response: any) => {
+    setError('');
+    setLoading(true);
+    try {
+      const data = await api.post('/auth/google', {
+        token: response.credential,
+      });
+
+      localStorage.setItem('token', data.accessToken);
+      localStorage.setItem('user', JSON.stringify(data.user));
+
+      if (data.user.isOnboarded) {
+        router.push('/dashboard');
+      } else {
+        router.push('/onboarding');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Google Authentication failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,6 +186,18 @@ export default function AuthPage() {
             )}
           </button>
         </form>
+
+        {/* Separator */}
+        <div className="flex items-center my-6">
+          <div className="flex-1 h-[1px] bg-slate-850" />
+          <span className="text-[10px] font-bold text-slate-500 px-3 uppercase tracking-widest">OR</span>
+          <div className="flex-1 h-[1px] bg-slate-850" />
+        </div>
+
+        {/* Real Google OAuth Button */}
+        <div className="w-full flex justify-center overflow-hidden rounded-xl">
+          <div id="google-signin-button" className="w-full flex justify-center" style={{ minHeight: '44px' }} />
+        </div>
 
         {/* Toggle */}
         <p className="text-center text-xs text-slate-500 font-semibold mt-6">

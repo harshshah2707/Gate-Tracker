@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/
 import { PrismaService } from '../prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { OAuth2Client } from 'google-auth-library';
 
 @Injectable()
 export class AuthService {
@@ -59,16 +60,40 @@ export class AuthService {
     return this.generateAuthResponse(user);
   }
 
-  async googleAuth(googleData: { email: string; name: string }) {
+  async googleAuth(googleData: { token: string }) {
+    const token = googleData.token;
+    if (!token) {
+      throw new BadRequestException('Google ID token is required');
+    }
+
+    let email: string;
+    let name: string;
+
+    try {
+      const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+      const ticket = await client.verifyIdToken({
+        idToken: token,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      const payload = ticket.getPayload();
+      if (!payload || !payload.email) {
+        throw new UnauthorizedException('Invalid Google token payload');
+      }
+      email = payload.email;
+      name = payload.name || email.split('@')[0];
+    } catch (err: any) {
+      throw new UnauthorizedException(`Google authentication failed: ${err.message}`);
+    }
+
     let user = await this.prisma.user.findUnique({
-      where: { email: googleData.email },
+      where: { email },
     });
 
     if (!user) {
       user = await this.prisma.user.create({
         data: {
-          email: googleData.email,
-          name: googleData.name,
+          email,
+          name,
           college: '',
           graduationYear: 0,
           currentYear: 0,

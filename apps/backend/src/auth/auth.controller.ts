@@ -42,21 +42,19 @@ export class AuthController {
   }
 
   @Post('google')
-  @ApiOperation({ summary: 'Authenticate/onboard with Google OAuth details' })
+  @ApiOperation({ summary: 'Authenticate with Google ID token' })
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
-        email: { type: 'string', example: 'harsh@gate.com' },
-        name: { type: 'string', example: 'Harsh Vardhan' },
+        token: { type: 'string', example: 'eyJhbGci...' },
       },
-      required: ['email', 'name'],
+      required: ['token'],
     },
   })
   async googleAuth(@Body() body: any) {
     return this.authService.googleAuth({
-      email: body.email,
-      name: body.name,
+      token: body.token,
     });
   }
 
