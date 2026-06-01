@@ -23,4 +23,3 @@ databases:
   - name: gate-warroom-db
     plan: free
     databaseName: gatewarroom
-    user: postgres
