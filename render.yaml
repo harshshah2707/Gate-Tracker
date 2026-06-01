@@ -8,7 +8,9 @@ services:
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
-        sync: false          # You paste this from Supabase / Render Postgres
+        fromDatabase:
+          name: gate-warroom-db
+          property: connectionString
       - key: JWT_SECRET
         generateValue: true  # Render auto-generates a secure random value
       - key: PORT
@@ -18,8 +20,7 @@ services:
     autoDeploy: true
 
 databases:
-  # Uncomment below ONLY if you want Render-managed Postgres instead of Supabase
-  # - name: gate-warroom-db
-  #   plan: free
-  #   databaseName: gatewarroom
-  #   user: postgres
+  - name: gate-warroom-db
+    plan: free
+    databaseName: gatewarroom
+    user: postgres

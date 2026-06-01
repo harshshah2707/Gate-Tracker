@@ -56,3 +56,5 @@ apps/backend/prisma/migrations/*.sql
 # TypeScript
 # ─────────────────────────────────────────
 *.tsbuildinfo
+
+.vercel
