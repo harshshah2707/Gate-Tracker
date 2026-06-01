@@ -1,0 +1,24 @@
+{
+  "name": "gate-warroom-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/shared",
+    "apps/backend",
+    "apps/frontend"
+  ],
+  "scripts": {
+    "bootstrap": "npm install",
+    "dev:shared": "npm run dev --workspace=apps/shared",
+    "dev:backend": "npm run start:dev --workspace=apps/backend",
+    "dev:frontend": "npm run dev --workspace=apps/frontend",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "build:shared": "npm run build --workspace=apps/shared",
+    "build:backend": "npm run build --workspace=apps/backend",
+    "build:frontend": "npm run build --workspace=apps/frontend",
+    "build": "npm run build:shared && npm run build:backend && npm run build:frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

@@ -1,0 +1,256 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  MEMBER
+  ADMIN
+  CREATOR
+}
+
+enum GroupType {
+  PRIVATE
+  COLLEGE
+  PUBLIC
+  BATCH
+}
+
+enum RevisionStatus {
+  PENDING
+  COMPLETED
+  OVERDUE
+}
+
+model User {
+  userId                  String             @id @default(uuid())
+  email                   String             @unique
+  passwordHash            String?            // Nullable for Google OAuth users
+  name                    String
+  college                 String
+  graduationYear          Int
+  currentYear             Int
+  targetRank              Int
+  targetScore             Int
+  currentPreparationLevel String
+  dailyStudyTarget        Float              @default(6.0)
+  totalStudyHours         Float              @default(0.0)
+  currentStreak           Int                @default(0)
+  longestStreak           Int                @default(0)
+  trustScore              Float              @default(50.0)
+  accountabilityScore     Float              @default(0.0)
+  readinessScore          Float              @default(0.0)
+  estimatedRankMin        Int                @default(5000)
+  estimatedRankMax        Int                @default(20000)
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
+  sessions                StudySession[]
+  groupMemberships        GroupMembership[]
+  syllabusTrackers        SyllabusTracker[]
+  revisionQueues          RevisionQueue[]
+  mockTests               MockTest[]
+  pyqTrackers             PYQTracker[]
+  stats                   UserStats[]
+  activities              ActivityFeed[]
+  reactions               ActivityReaction[]
+  achievements            Achievement[]
+  notifications           Notification[]
+
+  @@index([email])
+}
+
+model StudySession {
+  sessionId          String   @id @default(uuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  startTime          DateTime
+  endTime            DateTime
+  duration           Int      // in minutes
+  subject            String
+  topic              String
+  tags               String[]
+  notes              String?
+  focusScore         Float
+  productivityScore  Float
+  verificationLevel  Int      // 1 to 4
+  isManualLog        Boolean  @default(false)
+  interruptions      Int      @default(0)
+  trustedSession     Boolean  @default(true)
+  createdAt          DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model StudyGroup {
+  groupId          String            @id @default(uuid())
+  groupName        String
+  creatorId        String
+  groupType        GroupType         @default(PUBLIC)
+  memberCount      Int               @default(1)
+  currentStreak    Int               @default(0)
+  longestStreak    Int               @default(0)
+  groupConsistency Float             @default(0.0)
+  createdAt        DateTime          @default(now())
+  
+  members          GroupMembership[]
+  activities       ActivityFeed[]
+}
+
+model GroupMembership {
+  groupId  String
+  userId   String
+  joinDate DateTime  @default(now())
+  isAdmin  Boolean   @default(false)
+  role     Role      @default(MEMBER)
+
+  group    StudyGroup @relation(fields: [groupId], references: [groupId], onDelete: Cascade)
+  user     User       @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@id([groupId, userId])
+  @@index([userId])
+  @@index([groupId])
+}
+
+model SyllabusTracker {
+  subjectId            String   @id @default(uuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  subjectName          String
+  unitsProgress        Json     // Progress JSON containing topics structure
+  completionPercentage Float    @default(0.0)
+  confidencePercentage Float    @default(0.0)
+  masteryPercentage    Float    @default(0.0)
+  topicStatuses        Json     // Map of topicId -> "Not Started" | "Learning" | "Practiced" | "Revised Once" | "Revised Twice" | "Mastered"
+  lastUpdated          DateTime @default(now()) @updatedAt
+
+  @@unique([userId, subjectName])
+  @@index([userId])
+}
+
+model RevisionQueue {
+  revisionId       String         @id @default(uuid())
+  userId           String
+  user             User           @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  topicId          String
+  subjectId        String
+  nextRevisionDate DateTime
+  interval         Int            // 1, 3, 7, 15, 30 days
+  completedCount   Int            @default(0)
+  missedCount      Int            @default(0)
+  status           RevisionStatus @default(PENDING)
+
+  @@index([userId])
+  @@index([nextRevisionDate])
+  @@index([topicId])
+}
+
+model MockTest {
+  mockId             String   @id @default(uuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  platform           String
+  date               DateTime
+  marks              Float
+  accuracy           Float
+  rank               Int?
+  timeManagement     Json?    // breakdown of time spent
+  mistakeCategories  Json     // category -> count
+  subjectPerformance Json     // subject -> score
+  improvementAreas   String[]
+
+  @@index([userId])
+  @@index([date])
+}
+
+model PYQTracker {
+  pYQId      String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  subject    String
+  year       Int
+  difficulty String
+  solved     Boolean  @default(false)
+  accuracy   Float?
+  timeTaken  Int      // in minutes
+  category   String
+  isMissed   Boolean  @default(false)
+
+  @@index([userId])
+}
+
+model UserStats {
+  statsId             String   @id @default(uuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  date                DateTime // Date component only
+  dailyStudyHours     Float    @default(0.0)
+  dailyDebt           Float    @default(0.0)
+  weeklyConsistency   Float    @default(0.0)
+  monthlyConsistency  Float    @default(0.0)
+  totalPYQsSolved     Int      @default(0)
+  revisionHealthScore Float    @default(100.0)
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([date])
+}
+
+model ActivityFeed {
+  activityId   String             @id @default(uuid())
+  userId       String
+  user         User               @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  groupId      String?
+  group        StudyGroup?        @relation(fields: [groupId], references: [groupId], onDelete: Cascade)
+  activityType String             // "SESSION_COMPLETE" | "MOCK_COMPLETE" | "PYQ_COMPLETE" | "STREAK_MILESTONE"
+  description  String
+  metadata     Json
+  timestamp    DateTime           @default(now())
+
+  reactions    ActivityReaction[]
+
+  @@index([userId])
+  @@index([groupId])
+  @@index([timestamp])
+}
+
+model ActivityReaction {
+  reactionId String       @id @default(uuid())
+  activityId String
+  activity   ActivityFeed @relation(fields: [activityId], references: [activityId], onDelete: Cascade)
+  userId     String
+  user       User         @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  emoji      String
+
+  @@unique([activityId, userId, emoji])
+  @@index([activityId])
+}
+
+model Achievement {
+  achievementId       String   @id @default(uuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  achievementName     String
+  unlockedAt          DateTime @default(now())
+  achievementCategory String
+
+  @@index([userId])
+}
+
+model Notification {
+  notificationId String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  type           String
+  message        String
+  read           Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
