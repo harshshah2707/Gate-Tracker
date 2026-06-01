@@ -50,4 +50,4 @@ EXPOSE 5000
 
 # Run migrations then start
 WORKDIR /usr/src/app/apps/backend
-CMD npx prisma migrate deploy && node dist/main.js
+CMD npx prisma migrate deploy && node dist/src/main.js
